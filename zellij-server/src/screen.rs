@@ -716,6 +716,7 @@ pub(crate) struct Screen {
     connected_clients: Rc<RefCell<HashMap<ClientId, bool>>>, // bool -> is_web_client
     /// The indices of this [`Screen`]'s active [`Tab`]s.
     active_tab_indices: BTreeMap<ClientId, usize>,
+    last_active_tab_index: Option<usize>,
     tab_history: BTreeMap<ClientId, Vec<usize>>,
     mode_info: BTreeMap<ClientId, ModeInfo>,
     default_mode_info: ModeInfo, // TODO: restructure ModeInfo to prevent this duplication
@@ -799,6 +800,7 @@ impl Screen {
             style: client_attributes.style,
             connected_clients: Rc::new(RefCell::new(HashMap::new())),
             active_tab_indices: BTreeMap::new(),
+            last_active_tab_index: None,
             tabs: BTreeMap::new(),
             overlay: OverlayWindow::default(),
             terminal_emulator_colors: Rc::new(RefCell::new(Palette::default())),
@@ -1607,6 +1609,10 @@ impl Screen {
             self.active_tab_indices.iter().next()
         {
             *first_active_tab_index
+        } else if let Some(last_active_index) = self.last_active_tab_index {
+            if self.tabs.contains_key(&last_active_index) {
+                last_active_index
+            }
         } else if self.tabs.contains_key(&0) {
             0
         } else if let Some(tab_index) = self.tabs.keys().next() {
@@ -1615,6 +1621,9 @@ impl Screen {
             bail!("Can't find a valid tab to attach client to!");
         };
 
+        if self.connected_clients.borrow().is_empty() {
+            self.last_active_tab_index = None;
+        }
         self.active_tab_indices.insert(client_id, tab_index);
         self.connected_clients
             .borrow_mut()
@@ -1636,8 +1645,10 @@ impl Screen {
                 tab.visible(false).with_context(err_context)?;
             }
         }
-        if self.active_tab_indices.contains_key(&client_id) {
-            self.active_tab_indices.remove(&client_id);
+        if let Some(active_tab_index) = self.active_tab_indices.remove(&client_id) {
+            if self.active_tab_indices.is_empty() {
+                self.last_active_tab_index = Some(active_tab_index);
+            }
         }
         if self.tab_history.contains_key(&client_id) {
             self.tab_history.remove(&client_id);
