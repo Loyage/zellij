@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
+* fix: pane rename backspace regression (https://github.com/zellij-org/zellij/pull/4346)
+* fix: Zellij Web login issue with safari (https://github.com/zellij-org/zellij/pull/4345)
+* fix: terminal title regression (https://github.com/zellij-org/zellij/pull/4352)
+
+## [0.43.0] - 2025-08-05
 * feat: multiple select and bulk pane actions (https://github.com/zellij-org/zellij/pull/4169 and https://github.com/zellij-org/zellij/pull/4171, https://github.com/zellij-org/zellij/pull/4221 and https://github.com/zellij-org/zellij/pull/4286)
 * feat: add an optional key tooltip to show the current keybindings for the compact bar (https://github.com/zellij-org/zellij/pull/4225 and https://github.com/zellij-org/zellij/pull/4279)
 * feat: web-client, allowing users to share sessions in the browser (https://github.com/zellij-org/zellij/pull/4242, https://github.com/zellij-org/zellij/pull/4257 and https://github.com/zellij-org/zellij/pull/4278)
@@ -23,6 +28,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 * fix: out of bounds mouse release events (https://github.com/zellij-org/zellij/pull/4300)
 * fix: account for emoji/widechars when double/triple-clicking to mark words (https://github.com/zellij-org/zellij/pull/4302)
 * fix: allow pasting and emojis in tab/pane names and pasting in search (https://github.com/zellij-org/zellij/pull/4303)
+* fix: stack pane ordering when stacking multiple panes (https://github.com/zellij-org/zellij/pull/4308)
+* fix: normalize focusing of plugins launched through pipes (https://github.com/zellij-org/zellij/pull/4309)
+* performance: improve dumping screen for when editing scrollback with $EDITOR (https://github.com/zellij-org/zellij/pull/2548)
+* fix: properly truncate status bar secondary info (https://github.com/zellij-org/zellij/pull/4313)
 
 ## [0.42.2] - 2025-04-15
 * refactor(terminal): track scroll_region as tuple rather than Option (https://github.com/zellij-org/zellij/pull/4082)

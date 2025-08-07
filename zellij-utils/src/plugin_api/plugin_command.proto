@@ -316,6 +316,7 @@ message HighlightAndUnhighlightPanesPayload {
 message GroupAndUngroupPanesPayload {
   repeated PaneId pane_ids_to_group = 1;
   repeated PaneId pane_ids_to_ungroup = 2;
+  bool for_all_clients = 3;
 }
 
 message OpenFileInPlaceOfPluginPayload {
@@ -545,6 +546,7 @@ message NewPluginArgs {
     optional string pane_title = 3;
     optional string cwd = 4;
     bool skip_cache = 5;
+    optional bool should_focus = 6;
 }
 
 message PaneId {

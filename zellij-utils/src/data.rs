@@ -1988,6 +1988,7 @@ pub struct NewPluginArgs {
     pub pane_title: Option<String>,
     pub cwd: Option<PathBuf>,
     pub skip_cache: bool,
+    pub should_focus: Option<bool>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -2075,6 +2076,11 @@ impl MessageToPlugin {
     pub fn new_plugin_instance_should_skip_cache(mut self) -> Self {
         let new_plugin_args = self.new_plugin_args.get_or_insert_with(Default::default);
         new_plugin_args.skip_cache = true;
+        self
+    }
+    pub fn new_plugin_instance_should_be_focused(mut self) -> Self {
+        let new_plugin_args = self.new_plugin_args.get_or_insert_with(Default::default);
+        new_plugin_args.should_focus = Some(true);
         self
     }
 }
@@ -2513,7 +2519,8 @@ pub enum PluginCommand {
     ShareCurrentSession,
     StopSharingCurrentSession,
     OpenFileInPlaceOfPlugin(FileToOpen, bool, Context), // bool -> close_plugin_after_replace
-    GroupAndUngroupPanes(Vec<PaneId>, Vec<PaneId>),     // panes to group, panes to ungroup
+    GroupAndUngroupPanes(Vec<PaneId>, Vec<PaneId>, bool), // panes to group, panes to ungroup,
+    // bool -> for all clients
     HighlightAndUnhighlightPanes(Vec<PaneId>, Vec<PaneId>), // panes to highlight, panes to
     // unhighlight
     CloseMultiplePanes(Vec<PaneId>),

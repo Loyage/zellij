@@ -412,7 +412,7 @@ pub enum ScreenInstruction {
     ChangeFloatingPanesCoordinates(Vec<(PaneId, FloatingPaneCoordinates)>),
     AddHighlightPaneFrameColorOverride(Vec<PaneId>, Option<String>), // Option<String> => optional
     // message
-    GroupAndUngroupPanes(Vec<PaneId>, Vec<PaneId>, ClientId), // panes_to_group, panes_to_ungroup
+    GroupAndUngroupPanes(Vec<PaneId>, Vec<PaneId>, bool, ClientId), // panes_to_group, panes_to_ungroup, bool -> for all clients
     HighlightAndUnhighlightPanes(Vec<PaneId>, Vec<PaneId>, ClientId), // panes_to_highlight, panes_to_unhighlight
     FloatMultiplePanes(Vec<PaneId>, ClientId),
     EmbedMultiplePanes(Vec<PaneId>, ClientId),
@@ -2779,13 +2779,14 @@ impl Screen {
         }
     }
     pub fn stack_panes(&mut self, mut pane_ids_to_stack: Vec<PaneId>) -> Option<PaneId> {
-        // if successful, returns the pane id of the root pane
+        // if successful, returns the pane id of the last pane in the stack
         if pane_ids_to_stack.is_empty() {
             log::error!("Got an empty list of pane_ids to stack");
             return None;
         }
         let stack_size = pane_ids_to_stack.len();
         let root_pane_id = pane_ids_to_stack.remove(0);
+        let last_pane_id = pane_ids_to_stack.last();
         let Some(root_tab_id) = self
             .tabs
             .iter()
@@ -2801,6 +2802,17 @@ impl Screen {
             log::error!("Failed to find tab for root_pane_id: {:?}", root_pane_id);
             return None;
         };
+        let root_pane_id_is_floating = self
+            .tabs
+            .get(&root_tab_id)
+            .map(|t| t.pane_id_is_floating(&root_pane_id))
+            .unwrap_or(false);
+
+        if root_pane_id_is_floating {
+            self.tabs.get_mut(&root_tab_id).map(|tab| {
+                let _ = tab.toggle_pane_embed_or_floating_for_pane_id(root_pane_id, None);
+            });
+        }
 
         let mut panes_to_stack = vec![];
         let target_tab_has_room_for_stack = self
@@ -2835,7 +2847,7 @@ impl Screen {
         self.tabs
             .get_mut(&root_tab_id)
             .map(|t| t.stack_panes(root_pane_id, panes_to_stack));
-        return Some(root_pane_id);
+        return last_pane_id.copied();
     }
     pub fn change_floating_panes_coordinates(
         &mut self,
@@ -3128,16 +3140,28 @@ impl Screen {
         &mut self,
         pane_ids_to_group: Vec<PaneId>,
         pane_ids_to_ungroup: Vec<PaneId>,
+        for_all_clients: bool,
         client_id: ClientId,
     ) {
-        {
-            let mut current_pane_group = self.current_pane_group.borrow_mut();
-            current_pane_group.group_and_ungroup_panes(
-                pane_ids_to_group,
-                pane_ids_to_ungroup,
-                self.size,
-                &client_id,
-            );
+        if for_all_clients {
+            {
+                let mut current_pane_group = self.current_pane_group.borrow_mut();
+                current_pane_group.group_and_ungroup_panes_for_all_clients(
+                    pane_ids_to_group,
+                    pane_ids_to_ungroup,
+                    self.size,
+                );
+            }
+        } else {
+            {
+                let mut current_pane_group = self.current_pane_group.borrow_mut();
+                current_pane_group.group_and_ungroup_panes(
+                    pane_ids_to_group,
+                    pane_ids_to_ungroup,
+                    self.size,
+                    &client_id,
+                );
+            }
         }
         self.retain_only_existing_panes_in_pane_groups();
         let _ = self.log_and_report_session_state();
@@ -5481,8 +5505,8 @@ pub(crate) fn screen_thread_main(
                 screen.set_floating_pane_pinned(pane_id, should_be_pinned);
             },
             ScreenInstruction::StackPanes(pane_ids_to_stack, client_id) => {
-                if let Some(root_pane_id) = screen.stack_panes(pane_ids_to_stack) {
-                    let _ = screen.focus_pane_with_id(root_pane_id, false, client_id);
+                if let Some(last_pane_id) = screen.stack_panes(pane_ids_to_stack) {
+                    let _ = screen.focus_pane_with_id(last_pane_id, false, client_id);
                     let _ = screen.unblock_input();
                     let _ = screen.render(None);
                     let pane_group = screen.get_client_pane_group(&client_id);
@@ -5505,9 +5529,15 @@ pub(crate) fn screen_thread_main(
             ScreenInstruction::GroupAndUngroupPanes(
                 pane_ids_to_group,
                 pane_ids_to_ungroup,
+                for_all_clients,
                 client_id,
             ) => {
-                screen.group_and_ungroup_panes(pane_ids_to_group, pane_ids_to_ungroup, client_id);
+                screen.group_and_ungroup_panes(
+                    pane_ids_to_group,
+                    pane_ids_to_ungroup,
+                    for_all_clients,
+                    client_id,
+                );
                 let _ = screen.log_and_report_session_state();
             },
             ScreenInstruction::TogglePaneInGroup(client_id) => {

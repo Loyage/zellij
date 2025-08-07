@@ -1,5 +1,4 @@
 use super::sixel::{PixelRect, SixelGrid, SixelImageStore};
-use regex::Regex;
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -272,7 +271,7 @@ fn subtract_isize_from_usize(u: usize, i: isize) -> usize {
 macro_rules! dump_screen {
     ($lines:expr) => {{
         let mut is_first = true;
-        let mut buf = "".to_owned();
+        let mut buf = String::with_capacity($lines.iter().map(|l| l.len()).sum());
 
         for line in &$lines {
             if line.is_canonical && !is_first {
@@ -281,8 +280,7 @@ macro_rules! dump_screen {
             let s: String = (&line.columns).into_iter().map(|x| x.character).collect();
             // Replace the spaces at the end of the line. Sometimes, the lines are
             // collected with spaces until the end of the panel.
-            let re = Regex::new("([^ ])[ ]*$").unwrap();
-            buf.push_str(&(re.replace(&s, "${1}")));
+            buf.push_str(&s.trim_end_matches(' '));
             is_first = false;
         }
         buf
@@ -1315,7 +1313,7 @@ impl Grid {
                 // the state is corrupted
                 return;
             }
-            if scroll_region_bottom == self.height - 1 && scroll_region_top == 0 {
+            if scroll_region_bottom == self.height.saturating_sub(1) && scroll_region_top == 0 {
                 if self.alternate_screen_state.is_none() {
                     self.transfer_rows_to_lines_above(1);
                 } else {
@@ -1547,7 +1545,7 @@ impl Grid {
         if y >= scroll_region_top && y <= scroll_region_bottom {
             self.cursor.y = std::cmp::min(scroll_region_bottom, y + y_offset);
         } else {
-            self.cursor.y = std::cmp::min(self.height - 1, y + y_offset);
+            self.cursor.y = std::cmp::min(self.height.saturating_sub(1), y + y_offset);
         }
         self.pad_lines_until(self.cursor.y, pad_character.clone());
         self.pad_current_line_until(self.cursor.x, pad_character);

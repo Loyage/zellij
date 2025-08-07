@@ -971,6 +971,7 @@ impl TryFrom<ProtobufPluginCommand> for PluginCommand {
                                 pane_title: protobuf_new_plugin_args.pane_title,
                                 cwd: protobuf_new_plugin_args.cwd.map(|cwd| PathBuf::from(cwd)),
                                 skip_cache: protobuf_new_plugin_args.skip_cache,
+                                should_focus: protobuf_new_plugin_args.should_focus,
                             })
                         }),
                         destination_plugin_id,
@@ -1590,6 +1591,7 @@ impl TryFrom<ProtobufPluginCommand> for PluginCommand {
                             .into_iter()
                             .filter_map(|p| p.try_into().ok())
                             .collect(),
+                        group_and_ungroup_panes_payload.for_all_clients,
                     ))
                 },
                 _ => Err("Mismatched payload for GroupAndUngroupPanes"),
@@ -2260,6 +2262,7 @@ impl TryFrom<PluginCommand> for ProtobufPluginCommand {
                                 pane_title: m_t_p.pane_title,
                                 cwd: m_t_p.cwd.map(|cwd| cwd.display().to_string()),
                                 skip_cache: m_t_p.skip_cache,
+                                should_focus: m_t_p.should_focus,
                             }
                         }),
                         destination_plugin_id: message_to_plugin.destination_plugin_id,
@@ -2748,23 +2751,26 @@ impl TryFrom<PluginCommand> for ProtobufPluginCommand {
                     },
                 )),
             }),
-            PluginCommand::GroupAndUngroupPanes(panes_to_group, panes_to_ungroup) => {
-                Ok(ProtobufPluginCommand {
-                    name: CommandName::GroupAndUngroupPanes as i32,
-                    payload: Some(Payload::GroupAndUngroupPanesPayload(
-                        GroupAndUngroupPanesPayload {
-                            pane_ids_to_group: panes_to_group
-                                .iter()
-                                .filter_map(|&p| p.try_into().ok())
-                                .collect(),
-                            pane_ids_to_ungroup: panes_to_ungroup
-                                .iter()
-                                .filter_map(|&p| p.try_into().ok())
-                                .collect(),
-                        },
-                    )),
-                })
-            },
+            PluginCommand::GroupAndUngroupPanes(
+                panes_to_group,
+                panes_to_ungroup,
+                for_all_clients,
+            ) => Ok(ProtobufPluginCommand {
+                name: CommandName::GroupAndUngroupPanes as i32,
+                payload: Some(Payload::GroupAndUngroupPanesPayload(
+                    GroupAndUngroupPanesPayload {
+                        pane_ids_to_group: panes_to_group
+                            .iter()
+                            .filter_map(|&p| p.try_into().ok())
+                            .collect(),
+                        pane_ids_to_ungroup: panes_to_ungroup
+                            .iter()
+                            .filter_map(|&p| p.try_into().ok())
+                            .collect(),
+                        for_all_clients,
+                    },
+                )),
+            }),
             PluginCommand::StartWebServer => Ok(ProtobufPluginCommand {
                 name: CommandName::StartWebServer as i32,
                 payload: None,
